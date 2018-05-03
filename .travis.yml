@@ -5,15 +5,15 @@ node_js: 6.10
 env:
   global:
 
-    - AWS_ACCESS_KEY_ID=AKIAI6AOG5SJK5JVZHAA
+    - AWS_ACCESS_KEY_ID=AKIAIY72BYOTX7AYCKAA
     - AWS_DEFAULT_REGION=ap-southeast-2
     - LAMBDA_NAME=awsBillingAlerts
     - LAMBDA_ALIAS=prod
-    - SNS_TOPIC=arn:aws:sns:ap-southeast-2:873114526714:admin-notifications
-    - BUCKET_NAME=aws-admin-timmalone
+    - SNS_TOPIC=arn:aws:sns:ap-southeast-2:300761597318:admin-notifications
+    - BUCKET_NAME=chr-admin
 
     # AWS_SECRET_ACCESS_KEY
-    - secure: V2p3mGY5eUNEQPEkXhJ/94mLX0eZ0vh1IPCmoNjjVsYrl4uHLTGFUp4/+eq6vFTFDPYX+SCz0kyzvPjMOG3IB+BZrbIWBS4Lz9ryZPj0JEisulfwlE5BSjzTkch7kC5jt+Ii44k9liV2VellrUgd2/GtwjmFyOWUUrPwe4qeBSMAHFOS5g3lGweaQJFPXuM03YFg8DrpyY7qC+vH0X6COvXZdQvnTMzqFw8yWc6lD9Yi13yirutjp5MK03iqUSnvcqjb4/ziU2pj1nXhjRQRLwLcKgy/p4QnV/+BUm/kA/BR2BkkG892CXanNqbQjqGjdtXmVvmac6j1Es16PsDiOs7f9DM6hzDxDFHFd9F9jblvRQdnZSwWfxk6KhpMxcxV2+iwO0XpTRpIIDe/Z3pIgIBP9RrkoJXCSyc2J5Dq5prKNdmZWvp3Eeq5F21QXpKt1g90z8nK/fnOhve/TuoT4/wGoQunZg6lST5Kwx8gtP3og575Gcw/hUmm8fYvsMhF9w+d5S2zE897SgOiSHLKcoIsOgZtr8pz5IC9vooal/vu5y8r0QXiNZMHJVuQg1UhbKH2WBb5oCUoKg891FEk7RSudRxo8HFFLWoHHhmCDLvAJQm+TjfSJ9mA6lvPpjkdRlU9jd0YKEJl3cXx7JvZjrdcQpoYjvhs0UdkhpK+U94=
+    - secure: r4YtOjeasOuLOGlikegcl003Eh3W2voEsI8Im0gFPLtfl+3MDum+UewmIc1Q0LInkKXPblBCNZBv8J+2FNDjMArqsetmFzsww+tL+4pQgTTMH9wa+OfhcTMI+EWwzBJEIXzW+i1l94knQLtFP6bk8tMai260Up6GXZRw+tf2S8KWz6IHH1EpkwErKKI1QlpySBD5TE4C272emlhdO/hz1k0nEbU+hTlfhrdy8CkSGCkms9oDbl9X7Ug7zp4uWPjhRbG8payO+PNjwkciF949U8Q6zA2socFGeFgjIbEx8SPHC98B/+gOfxaWO4V02D6POzMDRv2HmGYgADQszT+3QJr1BMnPLA4Q0rbwYsmzjorNCbcPhHBl+j08CtFBTCqMpepSycI/5SjpBVeuebFxYZmbRESthYWUkKgRWVh75yHcaChSG3eyQg3LKm6bOak2Cnh/LF2DSIHemyGHAOHq/tPI6WYdwlkcyfrxGLDICsjNHIRCsNaOO/TEpTMgHCv4Pf93PEFAJZzRNKx//Bs1udyIl61396mzsIKCeWF24cz+hNV9QYq0SJ3BmZykQof8sv0czJM+/HGf16t9xpdH25gfGKQL9c1Kl7OoUMPGq7cg7qHuQaT09mrEE5YzLz5hTRhiNtQIQm3G/KjXBx1ZBW8jTuRYoonU4Ulc0oDjfbk=
 
 cache:
   yarn: true
@@ -30,16 +30,16 @@ before_deploy: yarn remove aws-sdk && rm -rf coverage node_modules tests .*rcs.j
 
 deploy:
 
-  # Deploy to $LATEST on dev branch. (i.e. don't publish a new version).
+  # Deploy to $LATEST on chromatix branch.
 
   - on:
-      branch: dev
+      branch: chromatix
     publish: false
 
     provider: lambda
     function_name: $LAMBDA_NAME
     region: $AWS_DEFAULT_REGION
-    role: arn:aws:iam::873114526714:role/genericLambdaRole
+    role: arn:aws:iam::300761597318:role/genericLambdaRole
     description: Sends SNS alerts when the current month's bill changes.
     runtime: nodejs6.10
     timeout: 30
@@ -47,41 +47,10 @@ deploy:
     access_key_id: $AWS_ACCESS_KEY_ID
     secret_access_key: $AWS_SECRET_ACCESS_KEY
     skip_cleanup: true
-
-
-  # Deploy and publish a new version on master branch.
-
-  - on:
-      branch: master
-    publish: true
-
-    provider: lambda
-    function_name: $LAMBDA_NAME
-    region: $AWS_DEFAULT_REGION
-    role: arn:aws:iam::873114526714:role/genericLambdaRole
-    description: Sends SNS alerts when the current month's bill changes.
-    runtime: nodejs6.10
-    timeout: 30
-    handler_name: handler
-    access_key_id: $AWS_ACCESS_KEY_ID
-    secret_access_key: $AWS_SECRET_ACCESS_KEY
-    skip_cleanup: true
-
-
-after_deploy:
-
-  # Set a Lambda alias to the most recently deployed version.
-  - if [ "master" = "${TRAVIS_BRANCH}" ]; then
-      pip install awscli --upgrade --user;
-      export MOST_RECENT=$(aws lambda list-versions-by-function --function "${LAMBDA_NAME}" --max-items 10000 | node -e "let stdin=''; process.stdin.on('data',(chunk)=>{stdin+=chunk}).on('end',()=>{console.log(JSON.parse(stdin).Versions.pop().Version)})");
-      aws lambda update-alias --function-name "${LAMBDA_NAME}" --name "${LAMBDA_ALIAS}" --function-version "${MOST_RECENT}";
-    fi;
 
 notifications:
   email: false
   webhooks:
-    urls: https://api.tm.id.au/v2/travis/jobStatus
-  slack:
+    urls:
+      - https://chr-cicd.herokuapp.com/hooks/travis.php
     on_start: always
-    rooms:
-      - secure: ynaWkeVqOPxokV7R3Hi4qhiyTVwUbvDaglXajL6iUzUFvjTuIxHSCMsvFbff9WdD2QxEUGFopvxaVd0faDali5UeACY+KOYh/atOw7AnxZKej2m00zBo54jwLrX88ObGT5TBk7Nzuls4cTprIFxq8AcudC2qUilDdOn9OfhPiLz8VUhPBYT2AMTs8ShP9XdOA1BOXmHWICWvrm0KMOYcyZ4dJ62XdToZLBhDuwRvU7/dcWDiyQdb23ax1Aq6aHhwzXPKK09Urb4N39aGEdVekQ7ubc5qAya7pEf7IMPZ+rjr+sC2M/kmAuu7DZxaUdyAuZj1teVB3Hwo4K7ajXPHlSuBVZZQMn14CMn07kF6/rgNhMcV8BL55LmpUggPwhG+C1xeHAIzr1BXDc6DNhWGH/6oPTOkjKe3XxMl2S2XM0o4dimZi7IEPjw4eVsZUbFSbxEsVYr0GhDE6GNFtUN4YqH+eSTPa5eeN5FAPE6Pa94RCrFaSJbz0F2CjCnPJLViMDFowTSDqdY9wufeTnVN5SbynWOFeY2Ku5h70R11UTEeCKwyZRojKujD87n99GnbsM7GjK8CH+vD95M2zSIKahJLX8fDUlKsbFDfXNrhvxDePaxzVKHl/cuJ+cd2O08SVkiDDQn4uATiZzG5iiMV87BdwVmxDiUrwGMVXl6wplg=
